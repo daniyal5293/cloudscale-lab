@@ -1,0 +1,25 @@
+# Local development/testing only. On AWS the container is started by EC2 user data.
+#
+#   docker compose up --build
+#   curl http://localhost:3000/api/health
+services:
+  cloudscale:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: local
+    image: cloudscale-lab:local
+    platform: linux/amd64
+    container_name: cloudscale-local
+    ports:
+      - "3000:3000"
+    environment:
+      # Mimic the values Terraform injects on EC2 so the UI looks realistic.
+      ASG_MIN: "1"
+      ASG_DESIRED: "1"
+      ASG_MAX: "3"
+      SCALING_TARGET: "600"
+      INSTANCE_TYPE: "t3.micro"
+      AWS_REGION: "us-east-1 (simulated)"
+    restart: unless-stopped

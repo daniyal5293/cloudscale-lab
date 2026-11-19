@@ -1,0 +1,34 @@
+# Copy to terraform.tfvars (git-ignored) and edit:
+#   Copy-Item terraform.tfvars.example terraform.tfvars
+
+aws_region   = "us-east-1"
+project_name = "cloudscale-lab"
+environment  = "demo"
+
+# REQUIRED: your PUBLIC GHCR image. Prefer an immutable sha- tag over :latest so
+# every instance (including ones launched later by scaling) runs the same build.
+container_image = "ghcr.io/<your-github-username>/cloudscale-lab:latest"
+
+# Compute
+instance_type       = "t3.micro" # x86_64; verify it is free-tier eligible for your account
+root_volume_size    = 8          # GiB, gp3, encrypted
+detailed_monitoring = false      # true = paid 1-minute EC2 metrics
+
+# Auto Scaling
+asg_min_size                   = 1
+asg_desired_capacity           = 1
+asg_max_size                   = 3
+requests_per_target_per_minute = 600 # ~10 req/s per instance
+health_check_grace_period      = 180
+instance_warmup                = 120
+
+# Optional second policy (experiment): scale on average CPU as well
+enable_cpu_policy  = false
+cpu_target_percent = 50
+
+# Networking: restrict to your own IP for a private demo, e.g. ["203.0.113.10/32"]
+allowed_http_cidrs = ["0.0.0.0/0"]
+
+# Monitoring: set an e-mail to receive alarm notifications (confirm the SNS e-mail)
+alarm_email                     = ""
+latency_alarm_threshold_seconds = 1

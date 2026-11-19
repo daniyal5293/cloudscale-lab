@@ -1,0 +1,75 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# CloudScale Lab: EC2 bootstrap script (rendered by Terraform templatefile()).
+# Runs once, as root, on first boot of every instance the Auto Scaling Group launches.
+#
+# Logs: /var/log/cloudscale-userdata.log, the EC2 serial console, and
+#       /var/log/cloud-init-output.log
+# View them via SSM Session Manager or "Get system log" in the EC2 console.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+exec > >(tee -a /var/log/cloudscale-userdata.log | logger -t cloudscale-userdata -s 2>/dev/console) 2>&1
+
+IMAGE="${container_image}"
+APP_PORT="${app_port}"
+CONTAINER_NAME="cloudscale"
+
+log() { echo "[cloudscale] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*"; }
+
+log "Bootstrap started (image=$IMAGE, port=$APP_PORT)"
+
+# 1. Install Docker (skipped if already present, so the script is safe to re-run).
+if ! command -v docker >/dev/null 2>&1; then
+  log "Installing Docker"
+  dnf install -y docker
+else
+  log "Docker already installed"
+fi
+
+# 2. Start Docker now and on every boot.
+systemctl enable --now docker
+log "Docker $(docker --version)"
+
+# 3. Pull the application image, retrying while the network/registry settles.
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  if docker pull "$IMAGE"; then
+    log "Image pulled on attempt $attempt"
+    break
+  fi
+  if [ "$attempt" -eq 10 ]; then
+    log "ERROR: could not pull $IMAGE. Is the GHCR package public and the tag correct?"
+    exit 1
+  fi
+  log "Pull failed (attempt $attempt), retrying in $((attempt * 5))s"
+  sleep $((attempt * 5))
+done
+
+# 4. Replace any previous container (idempotent re-runs).
+docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+
+# 5. Run the container. --restart unless-stopped brings it back after a crash or reboot.
+docker run -d \
+  --name "$CONTAINER_NAME" \
+  --restart unless-stopped \
+  -p "$APP_PORT:3000" \
+  --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 \
+  -e ASG_MIN="${asg_min}" \
+  -e ASG_DESIRED="${asg_desired}" \
+  -e ASG_MAX="${asg_max}" \
+  -e SCALING_TARGET="${scaling_target}" \
+  -e INSTANCE_TYPE="${instance_type}" \
+  -e AWS_REGION="${aws_region}" \
+  "$IMAGE"
+log "Container started"
+
+# 6. Wait for the same endpoint the ALB health check uses.
+for i in $(seq 1 30); do
+  if curl -fsS "http://127.0.0.1:$APP_PORT/api/health" >/dev/null; then
+    log "Health check OK: http://127.0.0.1:$APP_PORT/api/health. Bootstrap complete."
+    exit 0
+  fi
+  sleep 2
+done
+
+log "WARNING: app not healthy after 60s. The ALB will keep it out of rotation; check 'docker logs $CONTAINER_NAME'."
+exit 1

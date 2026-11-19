@@ -1,0 +1,18 @@
+# Normalise line endings in the repository.
+* text=auto
+
+# Files executed on Linux (EC2 user data, containers, CI) must keep LF endings,
+# even on Windows machines with core.autocrlf=true. A CRLF user-data script
+# fails on boot with "$'\r': command not found".
+*.sh        text eol=lf
+*.tftpl     text eol=lf
+*.tf        text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+
+# PowerShell scripts are run on Windows.
+*.ps1       text eol=crlf
+
+*.pdf       binary
+*.png       binary

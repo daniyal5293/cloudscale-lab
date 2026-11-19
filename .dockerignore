@@ -1,0 +1,12 @@
+# Allow-list: send only the application source to the Docker build context.
+*
+!app/
+
+# ...but never its build artefacts, dependencies or local secrets.
+app/node_modules
+app/.next
+app/out
+app/next-env.d.ts
+app/*.tsbuildinfo
+app/.env*
+app/npm-debug.log*

@@ -1,0 +1,46 @@
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+
+# ---- Environment & secrets: never commit ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials
+credentials.json
+
+# ---- Terraform: state contains resource details, never commit ----
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# ---- k6 results ----
+load-testing/results/*
+!load-testing/results/.gitkeep
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
