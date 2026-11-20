@@ -23,11 +23,13 @@ resource "aws_launch_template" "app" {
     instance_metadata_tags      = "disabled"
   }
 
-  # COST PROTECTION: T3 instances default to "unlimited" CPU credits, which can bill
-  # surplus credits when the CPU is pushed hard during a load test. "standard"
-  # throttles to baseline instead of charging.
+  # CPU credit mode (see var.cpu_credits). Lesson learned on AWS: in "standard"
+  # mode a freshly launched t3.micro has ~0 credits and is throttled to its 10%
+  # baseline, so installing Docker took > 4 min and new instances failed health
+  # checks. "unlimited" lets them burst; sustained use above baseline is billed
+  # at $0.05 per vCPU-hour (cents for this demo).
   credit_specification {
-    cpu_credits = "standard"
+    cpu_credits = var.cpu_credits
   }
 
   # Detailed (1-minute) EC2 monitoring is a paid feature; off by default.

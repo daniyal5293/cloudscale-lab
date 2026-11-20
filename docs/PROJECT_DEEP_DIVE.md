@@ -79,7 +79,10 @@ There are **two layers** of health checking:
 - **ALB health checks** decide *routing* (send traffic or not).
 - **Auto Scaling health checks** decide *replacement*. With `health_check_type = "ELB"`, Auto Scaling also treats
   an instance that fails ALB health checks as unhealthy and **terminates and replaces it**, but only after the
-  `health_check_grace_period` (180 s), which gives a newly booted instance time to install Docker and pull the image.
+  `health_check_grace_period` (300 s), which gives a newly booted instance time to install Docker and pull the image.
+  (Real lesson from deployment: with T3 `standard` CPU credits a new instance starts with ~0 credits, is throttled
+  to 10% CPU and took > 4 min just to install Docker, so it was replaced before it ever became healthy. Hence
+  `cpu_credits = "unlimited"`.)
 
 ## 4. How does EC2 Auto Scaling decide to launch another instance?
 

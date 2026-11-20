@@ -84,6 +84,17 @@ variable "detailed_monitoring" {
   default     = false
 }
 
+variable "cpu_credits" {
+  description = "T3 CPU credit mode. \"unlimited\": new instances can burst during boot/load; CPU above baseline is billed at $0.05 per vCPU-hour. \"standard\": never billed extra, but new instances start with ~0 credits and are throttled to 10% CPU (too slow to boot within the grace period)."
+  type        = string
+  default     = "unlimited"
+
+  validation {
+    condition     = contains(["standard", "unlimited"], var.cpu_credits)
+    error_message = "cpu_credits must be \"standard\" or \"unlimited\"."
+  }
+}
+
 variable "container_image" {
   description = "Public container image to run, e.g. ghcr.io/<github-user>/cloudscale-lab:sha-abc1234."
   type        = string
@@ -149,9 +160,9 @@ variable "requests_per_target_per_minute" {
 }
 
 variable "health_check_grace_period" {
-  description = "Seconds after launch before failed ELB health checks can cause Auto Scaling to replace an instance. Covers boot + Docker install + image pull."
+  description = "Seconds after launch before failed ELB health checks can cause Auto Scaling to replace an instance. Covers boot + Docker install + image pull (~1.5-3 min on t3.micro)."
   type        = number
-  default     = 180
+  default     = 300
 }
 
 variable "instance_warmup" {

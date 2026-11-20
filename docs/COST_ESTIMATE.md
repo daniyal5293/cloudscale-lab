@@ -46,7 +46,6 @@ verify them on your Billing → Free Tier page.
 | RDS / managed database | from ~$0.017/h + storage |
 | EKS control plane | $0.10/h |
 | EC2 detailed monitoring | ~$2.10 per instance-month (7 metrics) |
-| T3 Unlimited surplus CPU credits | $0.05 per vCPU-hour of surplus (disabled: `cpu_credits = "standard"`) |
 
 ---
 
@@ -82,7 +81,7 @@ order:
 |---|---|
 | Forgetting to run `terraform destroy` | Cleanup procedure + `scripts/verify-cleanup.ps1`; set a Budget alert (below) |
 | Runaway scale-out | `asg_max_size` hard-capped at 3 (validation rejects > 4) |
-| T3 Unlimited CPU credit surcharge during load tests | `credit_specification { cpu_credits = "standard" }` |
+| T3 Unlimited surplus CPU credits ($0.05 per vCPU-hour above the 10% baseline) | Accepted on purpose: `standard` mode left new instances throttled and unable to boot in time. Expect about $0.005 per instance launch and a few cents per load-test session. Worst case is about $0.09/h per instance at 100% CPU, capped by `asg_max_size = 3` |
 | Paid detailed monitoring | `detailed_monitoring = false` by default |
 | Extra dashboards/alarms beyond free allowance | 1 dashboard, 4 alarms (+2 managed) |
 | NAT Gateway / endpoints | Not used; public subnets with SG restrictions instead |

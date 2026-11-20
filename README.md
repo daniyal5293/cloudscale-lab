@@ -144,7 +144,8 @@ sequenceDiagram
   directly. This is a deliberate cost/complexity trade-off for a demo. Production would use private subnets.
 - **ALB** (internet-facing, port 80) → **listener** → **target group** (port 3000, health check `/api/health`).
 - **Launch template** defines each instance: AL2023 AMI, `t3.micro`, 8 GiB encrypted gp3, IMDSv2 only,
-  standard CPU credits, SSM-only IAM role, and **user data** that installs Docker and runs the container.
+  unlimited CPU credits (see [§17](#17-cost-considerations)), SSM-only IAM role, and **user data** that installs
+  Docker and runs the container.
 - **Auto Scaling Group** across both subnets, min 1 / desired 1 / max 3, `ELB` health checks, attached to the
   target group, with a **target tracking policy** of 600 requests per target per minute.
 - **CloudWatch** dashboard + 4 alarms, plus 2 alarms that the scaling policy manages automatically.
@@ -249,7 +250,8 @@ Main variables (see `terraform.tfvars.example`):
 | `instance_type` | `t3.micro` | Must be x86_64 and allowed on your plan |
 | `asg_min_size` / `asg_desired_capacity` / `asg_max_size` | 1 / 1 / 3 | Capacity (max is validated ≤ 4 as a cost guard) |
 | `requests_per_target_per_minute` | 600 | Scaling target |
-| `health_check_grace_period` / `instance_warmup` | 180 / 120 s | Boot allowances |
+| `health_check_grace_period` / `instance_warmup` | 300 / 120 s | Boot allowances |
+| `cpu_credits` | `unlimited` | T3 credit mode (`standard` throttles new instances; see §17) |
 | `enable_cpu_policy` | false | Optional CPU-based policy experiment |
 | `detailed_monitoring` | false | Paid 1-minute EC2 metrics |
 | `allowed_http_cidrs` | `["0.0.0.0/0"]` | Who can reach the ALB |
@@ -308,7 +310,7 @@ aws elbv2 describe-target-health --target-group-arn (terraform output -raw targe
 - The **target tracking policy** keeps `ALBRequestCountPerTarget` near **600 req/min per instance**:
   - **Scale-out:** 3 consecutive minutes above target → desired = `ceil(current × actual / target)`, capped at max.
   - **Scale-in:** 15 consecutive minutes well below target → instances are drained and terminated, down to min.
-- **Grace period (180 s)** stops new instances from being killed while they're still installing Docker.
+- **Grace period (300 s)** stops new instances from being killed while they're still installing Docker.
   **Warm-up (120 s)** keeps them out of the metric until they're ready.
 - `desired_capacity` is ignored by Terraform after creation, because Auto Scaling owns it.
 - **Request count vs CPU:** request count is a direct, 1-minute, free measure of demand. CPU is indirect and
@@ -413,8 +415,15 @@ are paid from credits:
 | **Forgotten for a month** | **≈ $41–65** |
 
 The biggest contributors are the **ALB** (billed even when idle) and **public IPv4 addresses** ($0.005/h each:
-2 for the ALB + 1 per instance). Built-in protections: no NAT Gateway, max 3 instances, standard (not unlimited)
-T3 CPU credits, no detailed monitoring, and 1 dashboard + 4 alarms within the always-free allowance.
+2 for the ALB + 1 per instance). Built-in protections: no NAT Gateway, max 3 instances, no detailed monitoring,
+and 1 dashboard + 4 alarms within the always-free allowance.
+
+**CPU credits, a lesson from the real deployment:** the first version used `cpu_credits = "standard"` to rule out
+surplus-credit charges. On AWS, newly launched t3.micro instances then had a credit balance of 0 and were throttled
+to their 10% baseline (`CPUCreditBalance = 0`, `CPUUtilization ≈ 10%`). Installing Docker took over 4 minutes,
+new instances failed their health checks, and they were replaced in a loop, which would also break scale-out. The
+project now uses `unlimited`. CPU above baseline is billed at **$0.05 per vCPU-hour**: about $0.005 per instance
+boot, a few cents for a load-test session, and at most about $0.09/hour per instance running flat out.
 Full breakdown: [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md). **This project is not free to leave running.**
 
 ## 18. Cleanup
@@ -442,6 +451,7 @@ If `destroy` fails part-way, run it again. Terraform resumes with whatever is le
 | `terraform apply`: *"not eligible for Free Tier"* / *"instance type not supported on your plan"* | Free-plan accounts can only launch eligible types | Run `preflight-check.ps1`; pick an eligible x86_64 type in `instance_type` |
 | *"You have requested more vCPU capacity than your current vCPU limit"* | Low On-Demand vCPU quota | Lower `asg_max_size`, or request a quota increase (Service Quotas, free) |
 | Targets stuck `unhealthy`, instances replaced repeatedly | Image can't be pulled (package private / wrong tag), or the container fails | Make the GHCR package public; check `container_image`; in Session Manager: `sudo cat /var/log/cloudscale-userdata.log` |
+| New instances stay `unhealthy` and are replaced in a loop; console log shows `dnf install docker` crawling | T3 `standard` credits: a new instance has `CPUCreditBalance = 0` and is throttled to 10% CPU | `cpu_credits = "unlimited"` (default now) and `health_check_grace_period = 300` |
 | ALB returns **503** | No healthy targets yet (still booting) or all failing | Wait 3–5 min after apply; check target health and its `Reason` |
 | ALB returns **502** | Container crashed or answered with garbage | `sudo docker logs cloudscale` via Session Manager |
 | ALB URL times out | Your IP isn't in `allowed_http_cidrs`, or you used `https://` | Use `http://`; check the variable |

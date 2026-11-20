@@ -13,13 +13,14 @@ container_image = "ghcr.io/<your-github-username>/cloudscale-lab:latest"
 instance_type       = "t3.micro" # x86_64; verify it is free-tier eligible for your account
 root_volume_size    = 8          # GiB, gp3, encrypted
 detailed_monitoring = false      # true = paid 1-minute EC2 metrics
+cpu_credits         = "unlimited" # "standard" = no surplus charges, but new instances boot throttled
 
 # Auto Scaling
 asg_min_size                   = 1
 asg_desired_capacity           = 1
 asg_max_size                   = 3
 requests_per_target_per_minute = 600 # ~10 req/s per instance
-health_check_grace_period      = 180
+health_check_grace_period      = 300
 instance_warmup                = 120
 
 # Optional second policy (experiment): scale on average CPU as well
