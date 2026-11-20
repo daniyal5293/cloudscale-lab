@@ -15,18 +15,36 @@ export interface InstanceIdentity {
 }
 
 const IMDS_BASE = process.env.IMDS_ENDPOINT ?? "http://169.254.169.254";
-// Keep this short: if IMDS is unreachable we must not slow the request down.
-const REQUEST_TIMEOUT_MS = 1000;
+// Short enough not to stall a request when IMDS is unreachable, long enough to
+// survive the first request after a cold start (when Next.js is still loading
+// page code and the event loop is busy, a 1 s timer could fire spuriously).
+const REQUEST_TIMEOUT_MS = 2000;
 const TOKEN_TTL_SECONDS = 300;
-// After a failed lookup, serve the fallback for a while before trying again.
-const RETRY_AFTER_FAILURE_MS = 30_000;
+// After a failed lookup, serve the fallback briefly before trying again.
+const RETRY_AFTER_FAILURE_MS = 10_000;
 
 // An instance's ID, AZ and private hostname never change during its lifetime,
 // so a successful lookup is cached for the life of the process. This keeps
 // /api/instance cheap under load-testing traffic (no IMDS call per request).
-let cachedIdentity: InstanceIdentity | null = null;
-let lastFailureAt = 0;
-let inFlight: Promise<InstanceIdentity> | null = null;
+//
+// The cache lives on globalThis because Next.js bundles pages, route handlers
+// and instrumentation separately: plain module-level variables would give each
+// bundle its own copy, so the homepage could still be on the fallback while
+// /api/instance already knew the real instance ID.
+interface MetadataCache {
+  identity: InstanceIdentity | null;
+  lastFailureAt: number;
+  inFlight: Promise<InstanceIdentity> | null;
+}
+
+const globalForMetadata = globalThis as typeof globalThis & {
+  __cloudscaleMetadata?: MetadataCache;
+};
+const cache: MetadataCache = (globalForMetadata.__cloudscaleMetadata ??= {
+  identity: null,
+  lastFailureAt: 0,
+  inFlight: null,
+});
 
 async function imdsRequest(path: string, init: RequestInit = {}): Promise<string> {
   const res = await fetch(`${IMDS_BASE}${path}`, {
@@ -70,26 +88,26 @@ function localFallback(): InstanceIdentity {
 }
 
 export async function getInstanceIdentity(): Promise<InstanceIdentity> {
-  if (cachedIdentity) return cachedIdentity;
+  if (cache.identity) return cache.identity;
   if (process.env.DISABLE_IMDS === "true") return localFallback();
-  if (Date.now() - lastFailureAt < RETRY_AFTER_FAILURE_MS) return localFallback();
+  if (Date.now() - cache.lastFailureAt < RETRY_AFTER_FAILURE_MS) return localFallback();
 
   // De-duplicate concurrent lookups (e.g. a burst of requests right after boot).
-  inFlight ??= fetchFromImds()
+  cache.inFlight ??= fetchFromImds()
     .then((identity) => {
-      cachedIdentity = identity;
+      cache.identity = identity;
       console.log(`[metadata] running on ${identity.instanceId} (${identity.availabilityZone})`);
       return identity;
     })
     .catch((error: unknown) => {
-      lastFailureAt = Date.now();
+      cache.lastFailureAt = Date.now();
       const reason = error instanceof Error ? error.message : String(error);
       console.warn(`[metadata] EC2 metadata unavailable, using local fallback: ${reason}`);
       return localFallback();
     })
     .finally(() => {
-      inFlight = null;
+      cache.inFlight = null;
     });
 
-  return inFlight;
+  return cache.inFlight;
 }

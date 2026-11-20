@@ -123,6 +123,9 @@ flowchart LR
 - CloudWatch is the **sensor**, the alarms are the **trigger**, the policy is the **controller** and the ASG is
   the **actuator**. It's a feedback loop: more instances lower requests per target, which settles the metric back
   near the target.
+- **The ALB publishes metrics only while requests flow.** An idle ALB sends *no datapoints*, which is different
+  from sending zeros. The scaling alarms then show `INSUFFICIENT_DATA`, and the project's health alarms use
+  `treat_missing_data = "notBreaching"` so that "idle" isn't mistaken for "down".
 - Auto Scaling **owns** the managed alarms. Never edit or delete them by hand; Terraform deletes them along with
   the policy.
 - The project's own alarms (unhealthy targets, no healthy targets, 5XX, latency) only **notify**. They take

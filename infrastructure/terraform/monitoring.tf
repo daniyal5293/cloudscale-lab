@@ -265,9 +265,12 @@ resource "aws_cloudwatch_metric_alarm" "no_healthy_hosts" {
   evaluation_periods  = 2
   threshold           = 1
   comparison_operator = "LessThanThreshold"
-  treat_missing_data  = "breaching"
-  alarm_actions       = local.alarm_actions
-  ok_actions          = local.alarm_actions
+  # ALB metrics are only published while requests flow. An idle site has NO
+  # datapoints, which must not count as "down". If the site is down while
+  # traffic flows, HealthyHostCount = 0 is published and the alarm fires.
+  treat_missing_data = "notBreaching"
+  alarm_actions      = local.alarm_actions
+  ok_actions         = local.alarm_actions
 }
 
 resource "aws_cloudwatch_metric_alarm" "target_5xx" {

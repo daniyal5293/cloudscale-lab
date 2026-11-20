@@ -330,6 +330,10 @@ After `apply`, open `terraform output -raw dashboard_url`. Set the time range to
 | EC2 CPU / Network | `CPUUtilization`, `NetworkIn/Out` aggregated by ASG (5-min) | Low | Rises, then spreads across instances |
 | Alarms | The 4 project alarms | All OK | All OK (scaling alarms live under CloudWatch → Alarms as `TargetTracking-*`) |
 
+**ALB metrics only appear while requests are flowing.** On an idle site the load-balancer widgets go blank
+(no datapoints, not zero), and the scaling alarms show `INSUFFICIENT_DATA`. Keep some traffic running during the
+demo, even just the normal k6 scenario. This is also why the alarms treat missing data as "not breaching".
+
 **Scaling activities** aren't a metric. Read them in EC2 → Auto Scaling Groups → *Activity* tab
 (`terraform output asg_console_url`), or live with `./scripts/watch-scaling.ps1`.
 
@@ -441,6 +445,7 @@ If `destroy` fails part-way, run it again. Terraform resumes with whatever is le
 | ALB returns **503** | No healthy targets yet (still booting) or all failing | Wait 3–5 min after apply; check target health and its `Reason` |
 | ALB returns **502** | Container crashed or answered with garbage | `sudo docker logs cloudscale` via Session Manager |
 | ALB URL times out | Your IP isn't in `allowed_http_cidrs`, or you used `https://` | Use `http://`; check the variable |
+| `no-healthy-targets` alarm in ALARM although the target is healthy | (Fixed) ALB publishes no metrics while idle; older config treated missing data as breaching | `treat_missing_data = "notBreaching"`, then `terraform apply` |
 | `/api/instance` shows `local-dev` **on EC2** | IMDS unreachable from the container | Launch template must have `http_put_response_hop_limit = 2` and `http_tokens = "required"` |
 | No scale-out during the spike | Load below target (internet latency reduces k6 rate) or not sustained ≥ 3 min | Check the dashboard; raise spike VUs or lower `requests_per_target_per_minute` |
 | No scale-in after the test | Traffic stopped completely → no metric datapoints → `INSUFFICIENT_DATA` | Run `SCENARIO=scalein` (keeps a trickle) for 20+ min |
