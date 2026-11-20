@@ -195,7 +195,7 @@ export function handleSummary(data) {
     `Scenario          : ${SCENARIO}`,
     `Target            : ${BASE_URL}${ENDPOINT}`,
     `Total requests    : ${reqs.count}`,
-    `Request rate      : ${reqs.rate.toFixed(2)} req/s (≈ ${(reqs.rate * 60).toFixed(0)} req/min)`,
+    `Request rate      : ${reqs.rate.toFixed(2)} req/s (~${(reqs.rate * 60).toFixed(0)} req/min)`,
     `Error rate        : ${(failed * 100).toFixed(2)} %`,
     `Checks passed     : ${(checksRate * 100).toFixed(2)} %`,
     `Latency avg       : ${fmtMs(duration.avg)}`,
