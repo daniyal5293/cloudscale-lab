@@ -38,6 +38,9 @@ terraform.rc
 load-testing/results/*
 !load-testing/results/.gitkeep
 
+# ---- Office lock files (created while a .pptx/.docx is open) ----
+~$*
+
 # ---- OS / editor ----
 .DS_Store
 Thumbs.db
