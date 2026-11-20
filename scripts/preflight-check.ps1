@@ -97,13 +97,37 @@ Write-Result "No existing CloudScale ALB" (-not $existing) $(if ($existing) { "f
 
 # ---- GHCR image is publicly pullable ----
 if ($Image) {
-  # Use an empty, temporary Docker config so the pull is anonymous (like on EC2)
-  # without logging you out of your own registries.
-  $anonConfig = Join-Path ([IO.Path]::GetTempPath()) "cloudscale-anon-docker"
-  New-Item -ItemType Directory -Force $anonConfig | Out-Null
-  docker --config $anonConfig pull --platform linux/amd64 $Image *> $null
-  Write-Result "Image pullable anonymously" ($LASTEXITCODE -eq 0) $Image
-  Remove-Item -Recurse -Force $anonConfig -ErrorAction SilentlyContinue
+  # Ask the registry directly, WITHOUT credentials, exactly as an EC2 instance
+  # would: get an anonymous pull token, then read the image manifest.
+  if ($Image -match '^ghcr\.io/([^:@]+):(.+)$') {
+    $repo = $Matches[1]
+    $tag = $Matches[2]
+    try {
+      $token = (Invoke-RestMethod "https://ghcr.io/token?scope=repository:${repo}:pull").token
+      $accept = @(
+        "application/vnd.oci.image.index.v1+json",
+        "application/vnd.docker.distribution.manifest.list.v2+json",
+        "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.v2+json"
+      ) -join ","
+      $manifest = Invoke-RestMethod "https://ghcr.io/v2/$repo/manifests/$tag" `
+        -Headers @{ Authorization = "Bearer $token"; Accept = $accept }
+      Write-Result "Image pullable anonymously" $true $Image
+
+      $platforms = @($manifest.manifests | Where-Object { $_.platform } |
+          ForEach-Object { "$($_.platform.os)/$($_.platform.architecture)" } |
+          Where-Object { $_ -ne "unknown/unknown" })   # skip build attestations
+      if ($platforms.Count -gt 0) {
+        Write-Result "Image has linux/amd64 (t3)" ($platforms -contains "linux/amd64") ($platforms -join ", ")
+      } else {
+        Write-Info "Image platforms" "single-platform manifest (CI builds linux/amd64)"
+      }
+    } catch {
+      Write-Result "Image pullable anonymously" $false "$Image (package private, or tag missing?)"
+    }
+  } else {
+    Write-Info "Image check" "only ghcr.io/<owner>/<name>:<tag> images can be checked"
+  }
 } else {
   Write-Info "Image check" "skipped (pass -Image ghcr.io/<user>/cloudscale-lab:<tag>)"
 }
