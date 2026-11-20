@@ -43,6 +43,7 @@ is **600 requests per target per minute** (10 req/s per instance).
 | **B: spike** | 0→5→30 VUs, hold 10 min, ramp down | ~25–30 req/s (~1,500–1,800/min) | 15 min | After ~3 min above target, **desired = 3**. New targets healthy ~3–5 min later |
 | **C: scalein** | 1 VU, 2 s pause | ~0.5 req/s (~30/min) | 25 min | After ~15 min below target, capacity steps back to **1** |
 | **D: distribution** | 2 VUs × 60 requests | short burst | ~30 s | Logs show responses from **several instance IDs** |
+| **demo** (classroom) | 0→30 VUs in 2 min, hold 25 min | ~25 req/s | 28 min | Start ~10 min **before** presenting; scaled to 3 by the time you're on stage |
 
 **Why does scale-in need a trickle of traffic?** With *zero* requests, the ALB publishes no
 `RequestCountPerTarget` datapoints. The scale-in alarm then sits in `INSUFFICIENT_DATA` instead of `ALARM`, and the

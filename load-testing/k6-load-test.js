@@ -68,6 +68,23 @@ const PROFILES = {
     pause: 1,
   },
 
+  // Live classroom demo: start it ~10 minutes BEFORE presenting. Scale-out
+  // needs ~8 min (3 min ramp/alarm + CloudWatch delay + ~2 min boot), longer
+  // than a 10-minute slot, so by the time you present, the dashboard already
+  // shows the full story and the UI tester shows 3 instance IDs.
+  // Measured on 2026-11-20: 30 VUs ≈ 1,480 req/min → desired 1 → 3.
+  demo: {
+    executor: "ramping-vus",
+    startVUs: 0,
+    stages: [
+      { duration: "2m", target: 30 },
+      { duration: "25m", target: 30 },
+      { duration: "1m", target: 0 },
+    ],
+    gracefulRampDown: "10s",
+    pause: 1,
+  },
+
   // Scenario C: load reduction. A gentle trickle (~0.5 req/s ≈ 30 req/min).
   // Traffic must NOT stop completely: with zero requests the
   // RequestCountPerTarget metric has no datapoints, the scale-in alarm sits

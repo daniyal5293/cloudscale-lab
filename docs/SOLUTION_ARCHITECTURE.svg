@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1120" viewBox="0 0 1800 1120" font-family="Segoe UI, Arial, sans-serif">
+  <title>CloudScale Lab: Solution Architecture</title>
+  <defs>
+    <marker id="aBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F6FEB"/></marker>
+    <marker id="aOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#E07B00"/></marker>
+    <marker id="aPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7B3FE4"/></marker>
+    <marker id="aGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606A"/></marker>
+    <style>
+      .t  { font-size: 15px; font-weight: 700; fill: #1B2430; }
+      .s  { font-size: 12.5px; fill: #24292F; }
+      .m  { font-size: 12px; fill: #57606A; }
+      .mono { font-family: Consolas, "Courier New", monospace; font-size: 12px; fill: #24292F; }
+      .lbl { font-size: 13px; font-weight: 700; }
+      .badge { font-size: 12px; font-weight: 700; fill: #FFFFFF; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1120" fill="#FFFFFF"/>
+  <text x="20" y="44" font-size="26" font-weight="700" fill="#1B2430">CloudScale Lab: Solution Architecture</text>
+  <text x="560" y="44" font-size="15" fill="#57606A">Load balancing and auto-scaling on AWS · us-east-1 · fully provisioned by Terraform (28 resources)</text>
+
+  <!-- ===================== LEFT: users, delivery, legend ===================== -->
+  <rect x="20" y="70" width="340" height="80" rx="8" fill="#EEF4FF" stroke="#1F6FEB" stroke-width="1.5"/>
+  <text x="34" y="96" class="t">Clients: browsers + k6 load generator</text>
+  <text x="34" y="118" class="s">HTTP :80 → http://&lt;alb-dns-name&gt;/api/instance</text>
+  <text x="34" y="138" class="m">Stateless app: any instance can serve any request</text>
+
+  <rect x="20" y="170" width="340" height="190" rx="8" fill="#F6F8FA" stroke="#57606A" stroke-width="1.5"/>
+  <text x="34" y="196" class="t">Developer workstation</text>
+  <text x="34" y="222" class="s">Terraform 1.17 · AWS provider 6.x · local state</text>
+  <text x="34" y="244" class="s">  plan → review → apply → destroy (28 resources)</text>
+  <text x="34" y="266" class="s">AWS CLI v2 · IAM user (least privilege)</text>
+  <text x="34" y="288" class="s">k6 load generator: normal · spike · scale-in</text>
+  <text x="34" y="310" class="s">PowerShell: preflight · watch-scaling ·</text>
+  <text x="34" y="330" class="s">  check-distribution · verify-cleanup</text>
+  <text x="34" y="350" class="m">No secrets in Git; tfstate and tfvars are git-ignored</text>
+
+  <rect x="20" y="380" width="340" height="262" rx="8" fill="#F6F0FF" stroke="#7B3FE4" stroke-width="1.5"/>
+  <text x="34" y="406" class="t">GitHub: cloudscale-lab repository</text>
+  <text x="34" y="428" class="s">GitHub Actions CI on every push / PR to main</text>
+  <rect x="34" y="440" width="312" height="40" rx="5" fill="#FFFFFF" stroke="#C9B6F2"/>
+  <text x="44" y="465" class="s">1  app: npm ci · ESLint · tsc · next build</text>
+  <rect x="34" y="486" width="312" height="40" rx="5" fill="#FFFFFF" stroke="#C9B6F2"/>
+  <text x="44" y="511" class="s">2  terraform: fmt -check · init · validate</text>
+  <rect x="34" y="532" width="312" height="40" rx="5" fill="#FFFFFF" stroke="#C9B6F2"/>
+  <text x="44" y="557" class="s">3  docker: buildx linux/amd64 · smoke test</text>
+  <rect x="34" y="578" width="312" height="40" rx="5" fill="#FFFFFF" stroke="#C9B6F2"/>
+  <text x="44" y="603" class="s">4  publish (main only) with GITHUB_TOKEN</text>
+  <text x="34" y="634" class="m">No AWS keys stored in GitHub</text>
+
+  <rect x="20" y="662" width="340" height="122" rx="8" fill="#F6F0FF" stroke="#7B3FE4" stroke-width="1.5"/>
+  <text x="34" y="688" class="t">GitHub Container Registry (public)</text>
+  <text x="34" y="710" class="mono">ghcr.io/…/cloudscale-lab:sha-&lt;commit&gt;</text>
+  <text x="34" y="732" class="s">Multi-stage build · node:24-alpine · 71 MB</text>
+  <text x="34" y="754" class="s">Runs as non-root · Docker HEALTHCHECK</text>
+  <text x="34" y="774" class="m">Anonymous pull: no registry credentials on EC2</text>
+
+  <!-- Legend -->
+  <rect x="20" y="806" width="340" height="294" rx="8" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
+  <text x="34" y="832" class="t">Legend</text>
+  <line x1="34" y1="856" x2="84" y2="856" stroke="#1F6FEB" stroke-width="3" marker-end="url(#aBlue)"/>
+  <text x="96" y="852" class="s">Request path: client/k6 → IGW → ALB :80</text>
+  <text x="96" y="870" class="s">→ target group → container :3000</text>
+  <line x1="34" y1="902" x2="84" y2="902" stroke="#E07B00" stroke-width="3" marker-end="url(#aOrange)"/>
+  <text x="96" y="898" class="s">Scaling loop: ALB metrics → alarm →</text>
+  <text x="96" y="916" class="s">target tracking → ASG → launch/terminate</text>
+  <line x1="34" y1="948" x2="84" y2="948" stroke="#7B3FE4" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#aPurple)"/>
+  <text x="96" y="944" class="s">Delivery: commit → CI → GHCR →</text>
+  <text x="96" y="962" class="s">docker pull at instance boot</text>
+  <line x1="34" y1="994" x2="84" y2="994" stroke="#57606A" stroke-width="2.5" stroke-dasharray="4 4" marker-end="url(#aGray)"/>
+  <text x="96" y="990" class="s">Management: Terraform via AWS APIs,</text>
+  <text x="96" y="1008" class="s">Session Manager (no SSH)</text>
+  <circle cx="46" cy="1044" r="11" fill="#E07B00"/><text x="42" y="1048" class="badge">A</text>
+  <text x="66" y="1040" class="s">A–D = order of the scale-out control loop</text>
+  <text x="66" y="1058" class="m">A metrics · B alarm · C set desired · D launch</text>
+  <text x="34" y="1086" class="m">Dashed boxes = created only on scale-out</text>
+
+  <!-- ===================== AWS CLOUD ===================== -->
+  <rect x="390" y="66" width="1392" height="1040" rx="10" fill="none" stroke="#232F3E" stroke-width="2"/>
+  <rect x="390" y="66" width="220" height="26" rx="4" fill="#232F3E"/>
+  <text x="400" y="85" font-size="14" font-weight="700" fill="#FFFFFF">AWS Cloud · us-east-1</text>
+
+  <!-- VPC -->
+  <rect x="410" y="104" width="892" height="990" rx="8" fill="#FBFEFB" stroke="#2E9E5B" stroke-width="2"/>
+  <text x="422" y="124" class="lbl" fill="#1E7A44">VPC 10.20.0.0/16  (DNS hostnames enabled, no NAT Gateway)</text>
+
+  <rect x="780" y="132" width="170" height="40" rx="6" fill="#E9F7EF" stroke="#2E9E5B" stroke-width="1.5"/>
+  <text x="865" y="157" text-anchor="middle" class="t" font-size="14">Internet Gateway</text>
+  <text x="962" y="148" class="m">Public route table:</text>
+  <text x="962" y="165" class="mono">10.20.0.0/16 → local · 0.0.0.0/0 → igw</text>
+
+  <!-- ALB -->
+  <rect x="440" y="190" width="830" height="124" rx="8" fill="#FFF4E5" stroke="#E07B00" stroke-width="2"/>
+  <text x="456" y="214" class="t">Application Load Balancer · internet-facing · nodes in 2 AZs · cross-zone</text>
+  <text x="456" y="238" class="s">Listener HTTP :80 → forward to target group (per-request routing, only to healthy targets)</text>
+  <text x="456" y="260" class="s">sg-alb: inbound TCP 80 from 0.0.0.0/0 · outbound TCP 3000 → sg-app only</text>
+  <text x="456" y="282" class="s">drop_invalid_header_fields = true · publishes 1-min metrics to CloudWatch while traffic flows</text>
+  <text x="456" y="302" class="m">Public IPv4 per AZ node · DNS name is the public entry point (no custom domain needed)</text>
+
+  <!-- Target group -->
+  <rect x="440" y="328" width="830" height="62" rx="8" fill="#FFFFFF" stroke="#E07B00" stroke-width="1.5"/>
+  <text x="456" y="352" class="t" font-size="14">Target group · HTTP :3000 · target type instance · round robin</text>
+  <text x="456" y="374" class="s">Health check GET /api/health every 15 s · timeout 5 s · 2 passes = healthy · 2 failures = unhealthy · deregistration delay 30 s</text>
+
+  <!-- AZs -->
+  <rect x="425" y="404" width="430" height="676" rx="8" fill="none" stroke="#1F6FEB" stroke-width="1.5" stroke-dasharray="8 5"/>
+  <text x="440" y="424" class="lbl" fill="#1F6FEB">Availability Zone us-east-1a</text>
+  <text x="440" y="442" class="m">Public subnet 10.20.0.0/24 (map public IP)</text>
+  <rect x="865" y="404" width="430" height="676" rx="8" fill="none" stroke="#1F6FEB" stroke-width="1.5" stroke-dasharray="8 5"/>
+  <text x="880" y="424" class="lbl" fill="#1F6FEB">Availability Zone us-east-1b</text>
+  <text x="880" y="442" class="m">Public subnet 10.20.1.0/24 (map public IP)</text>
+
+  <!-- ASG -->
+  <rect x="440" y="456" width="840" height="610" rx="10" fill="none" stroke="#E07B00" stroke-width="2.5" stroke-dasharray="12 6"/>
+  <rect x="452" y="1030" width="816" height="28" rx="5" fill="#FFF4E5"/>
+  <text x="462" y="1049" class="lbl" fill="#9A5200">EC2 Auto Scaling Group · min 1 / desired 1 / max 3 · health check type ELB · grace 300 s · warm-up 120 s · AZ-balanced</text>
+
+  <!-- EC2 instance template (AZ-a) -->
+  <g>
+    <rect x="455" y="470" width="385" height="318" rx="8" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+    <text x="469" y="494" class="t" font-size="14">Instance 1 · EC2 t3.micro · Amazon Linux 2023</text>
+    <rect x="467" y="506" width="361" height="112" rx="6" fill="#EEF4FF" stroke="#1F6FEB"/>
+    <text x="479" y="526" class="s" font-weight="700">Docker Engine (installed by user data)</text>
+    <rect x="479" y="536" width="337" height="72" rx="5" fill="#FFFFFF" stroke="#1F6FEB"/>
+    <text x="491" y="557" class="s" font-weight="700">Container: Next.js 16 · Node.js 24 · :3000</text>
+    <text x="491" y="577" class="mono">GET /api/health · GET /api/instance</text>
+    <text x="491" y="597" class="m">stateless · --restart unless-stopped</text>
+    <text x="469" y="644" class="s">IMDSv2 required · hop limit 2 → instance ID, AZ</text>
+    <text x="469" y="666" class="s">EBS gp3 8 GiB · encrypted · delete on termination</text>
+    <text x="469" y="688" class="s">T3 CPU credits: unlimited (fast boot under load)</text>
+    <text x="469" y="710" class="s">Instance profile: AmazonSSMManagedInstanceCore</text>
+    <text x="469" y="732" class="s">sg-app: in TCP 3000 from sg-alb only</text>
+    <text x="469" y="754" class="s">sg-app: out TCP 443 / 80 · no port 22 anywhere</text>
+    <text x="469" y="776" class="m">Public IP for outbound only (GHCR, dnf, SSM)</text>
+  </g>
+
+  <!-- EC2 instance 2 (AZ-b) -->
+  <g>
+    <rect x="880" y="470" width="385" height="318" rx="8" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5" stroke-dasharray="7 4"/>
+    <text x="894" y="494" class="t" font-size="14">Instance 2 · launched on scale-out</text>
+    <rect x="892" y="506" width="361" height="112" rx="6" fill="#EEF4FF" stroke="#1F6FEB"/>
+    <text x="904" y="526" class="s" font-weight="700">Docker Engine</text>
+    <rect x="904" y="536" width="337" height="72" rx="5" fill="#FFFFFF" stroke="#1F6FEB"/>
+    <text x="916" y="557" class="s" font-weight="700">Identical container (same image tag)</text>
+    <text x="916" y="577" class="mono">GET /api/health · GET /api/instance</text>
+    <text x="916" y="597" class="m">different instance ID → visible in UI</text>
+    <text x="894" y="644" class="s">Same launch template version as instance 1</text>
+    <text x="894" y="666" class="s">Registered in the target group automatically</text>
+    <text x="894" y="688" class="s">Receives traffic only after 2 passing checks</text>
+    <text x="894" y="710" class="s">Excluded from metrics during 120 s warm-up</text>
+    <text x="894" y="732" class="s">Scale-in: deregister → draining 30 s →</text>
+    <text x="894" y="754" class="s">  terminate (EBS and public IP released)</text>
+    <text x="894" y="776" class="m">Measured: launch → healthy in about 2 min</text>
+  </g>
+
+  <!-- Instance 3 + user data -->
+  <rect x="455" y="804" width="385" height="210" rx="8" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5" stroke-dasharray="7 4"/>
+  <text x="469" y="828" class="t" font-size="14">Instance 3 · scale-out (max size = 3)</text>
+  <text x="469" y="852" class="s">desired = ⌈ current × actual ÷ target ⌉</text>
+  <text x="469" y="874" class="s">e.g. ⌈ 1 × 1,485 ÷ 600 ⌉ = 3 instances</text>
+  <text x="469" y="904" class="s" font-weight="700">Self-healing</text>
+  <text x="469" y="926" class="s">ELB health check fails after grace period →</text>
+  <text x="469" y="948" class="s">ASG terminates and replaces the instance;</text>
+  <text x="469" y="970" class="s">ALB stops routing to it within ~30 s</text>
+  <text x="469" y="998" class="m">Termination policy: AZ balance, then oldest template</text>
+
+  <rect x="880" y="804" width="385" height="210" rx="8" fill="#F6F8FA" stroke="#57606A" stroke-width="1.5"/>
+  <text x="894" y="828" class="t" font-size="14">User data bootstrap (cloud-init, ~2 min)</text>
+  <text x="894" y="854" class="mono">1 dnf install -y docker</text>
+  <text x="894" y="876" class="mono">2 systemctl enable --now docker</text>
+  <text x="894" y="898" class="mono">3 docker pull &lt;image&gt; (retry ×10)</text>
+  <text x="894" y="920" class="mono">4 docker run -d --restart unless-stopped</text>
+  <text x="894" y="942" class="mono">     -p 3000:3000 -e ASG_MAX=3 …</text>
+  <text x="894" y="964" class="mono">5 curl /api/health → log</text>
+  <text x="894" y="992" class="m">Idempotent · logs: /var/log/cloudscale-userdata.log</text>
+
+  <!-- ===================== RIGHT: regional services ===================== -->
+  <rect x="1322" y="104" width="444" height="334" rx="8" fill="#FFF4E5" stroke="#E07B00" stroke-width="1.5"/>
+  <text x="1336" y="128" class="t">Amazon CloudWatch</text>
+  <text x="1336" y="152" class="s" font-weight="700">AWS/ApplicationELB (1-min):</text>
+  <text x="1336" y="172" class="s">  RequestCountPerTarget · RequestCount</text>
+  <text x="1336" y="192" class="s">  Healthy / UnHealthyHostCount · TargetResponseTime</text>
+  <text x="1336" y="212" class="s">  HTTPCode_Target_5XX · HTTPCode_ELB_5XX</text>
+  <text x="1336" y="236" class="s" font-weight="700">AWS/AutoScaling (1-min):</text>
+  <text x="1336" y="256" class="s">  GroupDesired · InService · Pending · Terminating</text>
+  <text x="1336" y="280" class="s" font-weight="700">AWS/EC2 (5-min basic):</text>
+  <text x="1336" y="300" class="s">  CPUUtilization · NetworkIn / NetworkOut</text>
+  <text x="1336" y="324" class="s" font-weight="700">Dashboard: 1 · 9 widgets</text>
+  <text x="1336" y="348" class="s" font-weight="700">Alarms: unhealthy-targets · no-healthy-targets ·</text>
+  <text x="1336" y="368" class="s">  target-5xx · high-latency-p95 (optional SNS e-mail)</text>
+  <text x="1336" y="392" class="s">Managed by policy: TargetTracking AlarmHigh /</text>
+  <text x="1336" y="412" class="s">  AlarmLow (drive scale-out and scale-in)</text>
+  <text x="1336" y="430" class="m">No custom metrics, no agent: AWS-provided metrics only</text>
+
+  <rect x="1322" y="458" width="444" height="160" rx="8" fill="#FFFFFF" stroke="#E07B00" stroke-width="2"/>
+  <text x="1336" y="482" class="t">Target tracking scaling policy</text>
+  <text x="1336" y="506" class="s">Metric: ALBRequestCountPerTarget</text>
+  <text x="1336" y="528" class="s">Target: 600 requests / target / minute</text>
+  <text x="1336" y="550" class="s">Scale-out: 3 consecutive 1-min datapoints &gt; target</text>
+  <text x="1336" y="572" class="s">Scale-in: 15 consecutive datapoints below target</text>
+  <text x="1336" y="594" class="s">Bounds: min 1 … max 3 (cost ceiling)</text>
+  <text x="1336" y="610" class="m">Optional experiment: ASGAverageCPUUtilization 50 %</text>
+
+  <rect x="1322" y="638" width="444" height="150" rx="8" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+  <text x="1336" y="662" class="t">Launch template (versioned)</text>
+  <text x="1336" y="686" class="s">AMI from SSM public parameter (latest AL2023)</text>
+  <text x="1336" y="708" class="s">t3.micro · gp3 8 GiB · IMDSv2 · user data template</text>
+  <text x="1336" y="730" class="s">New image tag → new version → rolling instance</text>
+  <text x="1336" y="752" class="s">  refresh (min healthy 100 % / max 200 %)</text>
+  <text x="1336" y="776" class="m">desired_capacity ignored by Terraform after create</text>
+
+  <rect x="1322" y="808" width="444" height="130" rx="8" fill="#F6F8FA" stroke="#57606A" stroke-width="1.5"/>
+  <text x="1336" y="832" class="t">IAM &amp; AWS Systems Manager</text>
+  <text x="1336" y="856" class="s">Instance role: SSM core only (app needs no AWS API)</text>
+  <text x="1336" y="878" class="s">Session Manager shell: no SSH keys, no port 22</text>
+  <text x="1336" y="900" class="s">Deployer: IAM user, us-east-1-scoped policy,</text>
+  <text x="1336" y="920" class="s">  can only create/pass roles named cloudscale-lab-*</text>
+
+  <rect x="1322" y="958" width="444" height="134" rx="8" fill="#E9F7EF" stroke="#2E9E5B" stroke-width="1.5"/>
+  <text x="1336" y="982" class="t">Cost guardrails</text>
+  <text x="1336" y="1006" class="s">No NAT Gateway (≈ $33/month saved)</text>
+  <text x="1336" y="1028" class="s">Max 3 instances · detailed monitoring off</text>
+  <text x="1336" y="1050" class="s">≈ $0.057/h at 1 instance · ≈ $0.09/h at 3</text>
+  <text x="1336" y="1072" class="s">terraform destroy + verify-cleanup script</text>
+
+  <!-- ===================== ARROWS ===================== -->
+  <!-- Request path -->
+  <polyline points="360,98 820,98 820,130" fill="none" stroke="#1F6FEB" stroke-width="3" marker-end="url(#aBlue)"/>
+  <line x1="865" y1="172" x2="865" y2="188" stroke="#1F6FEB" stroke-width="3" marker-end="url(#aBlue)"/>
+  <line x1="865" y1="314" x2="865" y2="326" stroke="#1F6FEB" stroke-width="3" marker-end="url(#aBlue)"/>
+  <line x1="780" y1="390" x2="780" y2="468" stroke="#1F6FEB" stroke-width="3" marker-end="url(#aBlue)"/>
+  <line x1="1210" y1="390" x2="1210" y2="468" stroke="#1F6FEB" stroke-width="3" marker-end="url(#aBlue)"/>
+
+  <!-- Scaling loop -->
+  <line x1="1270" y1="250" x2="1320" y2="250" stroke="#E07B00" stroke-width="3" marker-end="url(#aOrange)"/>
+  <circle cx="1296" cy="232" r="11" fill="#E07B00"/><text x="1292" y="236" class="badge">A</text>
+  <line x1="1544" y1="438" x2="1544" y2="456" stroke="#E07B00" stroke-width="3" marker-end="url(#aOrange)"/>
+  <circle cx="1570" cy="447" r="11" fill="#E07B00"/><text x="1566" y="451" class="badge">B</text>
+  <line x1="1322" y1="560" x2="1283" y2="560" stroke="#E07B00" stroke-width="3" marker-end="url(#aOrange)"/>
+  <circle cx="1302" cy="540" r="11" fill="#E07B00"/><text x="1298" y="544" class="badge">C</text>
+  <line x1="1322" y1="712" x2="1283" y2="712" stroke="#E07B00" stroke-width="3" marker-end="url(#aOrange)"/>
+  <circle cx="1302" cy="692" r="11" fill="#E07B00"/><text x="1297" y="696" class="badge">D</text>
+
+  <!-- Delivery -->
+  <line x1="190" y1="642" x2="190" y2="660" stroke="#7B3FE4" stroke-width="3" marker-end="url(#aPurple)"/>
+  <line x1="455" y1="600" x2="362" y2="716" stroke="#7B3FE4" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#aPurple)"/>
+  <text x="372" y="640" class="m" fill="#7B3FE4" font-weight="700" transform="rotate(-51 372 640)">docker pull :443</text>
+
+  <!-- Management -->
+  <line x1="360" y1="196" x2="388" y2="196" stroke="#57606A" stroke-width="2.5" stroke-dasharray="4 4" marker-end="url(#aGray)"/>
+  <line x1="1322" y1="872" x2="1283" y2="872" stroke="#57606A" stroke-width="2.5" stroke-dasharray="4 4" marker-end="url(#aGray)"/>
+</svg>
